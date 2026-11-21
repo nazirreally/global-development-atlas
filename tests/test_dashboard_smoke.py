@@ -43,3 +43,11 @@ def test_all_four_workspace_code_paths():
         runpy.run_path(str(Path(__file__).resolve().parents[1]/'app.py'),run_name='__main__')
     assert len(fake.figures)>=5
     assert all(len(fig.data)>=1 for fig in fake.figures)
+    # Contrast-aware hover style applies consistently across Plotly figures.
+    assert all(fig.layout.hoverlabel.bgcolor == '#132a3d' for fig in fake.figures)
+    assert all(fig.layout.hoverlabel.bordercolor == '#4edcc9' for fig in fake.figures)
+    maps = [trace for fig in fake.figures for trace in fig.data if trace.type == 'choropleth']
+    assert len(maps) == 1
+    assert 'Rank in view' in maps[0].hovertemplate
+    assert 'CO₂ per capita' in maps[0].hovertemplate
+    assert '<extra></extra>' in maps[0].hovertemplate
