@@ -7,10 +7,10 @@
 ![Streamlit](https://img.shields.io/badge/Streamlit-dashboard-FF4B4B?logo=streamlit&logoColor=white)
 ![R](https://img.shields.io/badge/R-ggplot2_companion-276DC3?logo=r&logoColor=white)
 ![Data](https://img.shields.io/badge/Data-real_public_sources-14B8A6)
-![Tests](https://img.shields.io/badge/Tests-5_prior_local_passed-3B82F6)
+![Tests](https://img.shields.io/badge/Tests-13_local_passed-3B82F6)
 ![CI](https://img.shields.io/badge/GitHub_Actions-configured_not_verified-64748B)
 
-> **Verification note:** Five Python tests passed in the original preparation environment; two new regression tests have been added but the complete suite has not yet been rerun in a network-capable build environment. GitHub Actions, live external API retrieval, R execution and Streamlit rendering have **not yet been verified**. No benchmark, dataset size, deployment URL or screenshot is invented.
+> **Verification note:** The current 13-test Python suite passed locally on 2026-11-22 (analytics transformations and source-contract tests). Source compilation also passed. Streamlit runtime rendering, full live API retrieval, R execution, and GitHub Actions success are **not yet verified**. No benchmark, dataset size, deployment URL or screenshot is invented.
 
 ## Why this project?
 
@@ -18,18 +18,28 @@ Economic indicators and environmental impacts are often examined in disconnected
 
 **Intended users:** data analysts, public policy researchers, environmental analysts, and students studying international development.
 
-## Application features
+## Intelligence Studio v2 — interactive workspaces
 
-| Workspace | User interaction | Output |
+The dashboard is deliberately structured as a **four-workspace research tool**, not a static collection of charts. A custom midnight-navy / mint / violet visual system adds a branded hero, dynamic KPI cards, responsive layout and high-contrast Plotly charts.
+
+| Workspace | Interactions | Analytical views |
 |---|---|---|
-| **Global choropleth** | Choose a metric, reporting year, and regions | Interactive geographic overview |
-| **Country comparison** | Select countries | Historical multi-country trends |
-| **Economic / environmental relationship** | Choose a World Bank measure | Country scatterplot versus CO₂ per capita |
-| **Data explorer** | Filter regions and years | Observed joined records and downloadable CSV |
-| **Provenance panel** | Inspect source context and coverage | True record count, country count and date range |
-| **Independent R analysis** | Run an R script | Life-expectancy histogram and observed-data CSV |
+| **◎ World Explorer** | Reporting year, primary indicator, region, income group, map mode, projection and color palette | Choropleth or proportional-circle map, ranking direction and top-N, regional distributions |
+| **⌁ Country Studio** | Up to any number of selected countries, history start, observed baseline, raw versus indexed comparison | Multiseries interactive history and exact adjacent-year percentage changes |
+| **◈ Relationships** | Independently select both axes, toggle observed population bubble sizes, refine country scope | Multivariate country bubble chart, matched-country count, Pearson correlation |
+| **▦ Data Lab** | Change reporting scope and export date window | True country-year counts, per-source completeness, reporting coverage timeline, country-level records and CSV export |
 
-The application uses a restrained dark-blue / teal visual system, headline KPIs, interactive Plotly visualizations and a wide-layout Streamlit dashboard. No image is provided as an actual screenshot until rendering has been verified.
+**Interactive controls** are genuine Streamlit widgets. Plotly figures support native hover, zoom, panning and interactive legend behavior. The Streamlit application loads publisher datasets with a 24-hour cache, but does not generate synthetic observations.
+
+### How to review
+
+1. Start the app (or open its deployed URL). Use the **Primary indicator** and **Reporting year** controls in the left sidebar.
+2. In **World Explorer**, switch between **Choropleth** and **Proportional circles**, try **Orthographic** projection, and change the color palette.
+3. In **Country Studio**, compare Pakistan, India, China, the United States and Germany; turn on **Index countries to a common baseline** to study relative trajectories.
+4. In **Relationships**, select GDP per capita on X and CO₂ per capita on Y; enable population-sized circles to expose scale differences.
+5. In **Data Lab**, review the actual observation counts by indicator, missingness over time and export the filtered country-year records.
+
+**Important:** These are implemented code paths, not visually verified screenshots. The revised app still requires a live Streamlit deployment smoke test to validate the appearance and behavior in a browser.
 
 ## Data architecture
 
@@ -130,7 +140,7 @@ python -m pytest -q
 python -m compileall -q app.py atlas
 ```
 
-**Verification performed:** five original Python unit tests passed locally; two regression tests for the OWID endpoint and schema were added (full suite rerun pending), covering temporal join behavior, duplicate-key rejection, unsupported indicator rejection, malformed World Bank payloads, and OWID CSV contract changes.
+**Verification performed:** 13 current Python unit tests passed locally, including World Bank/OWID contracts, multi-source panel construction, missingness, index rebasing and adjacent-year comparisons, covering temporal join behavior, duplicate-key rejection, unsupported indicator rejection, malformed World Bank payloads, and OWID CSV contract changes.
 
 The GitHub Actions workflow is configured to run pytest and source compilation on push and pull requests. Its result must be checked in the [Actions tab](https://github.com/nazirreally/global-development-atlas/actions); **CI success is not assumed**.
 
@@ -138,14 +148,16 @@ The GitHub Actions workflow is configured to run pytest and source compilation o
 
 ```text
 global-development-atlas/
-├── app.py                      # Streamlit dashboard / filters / charts
+├── app.py                      # Four interactive Streamlit workspaces and custom visual system
 ├── atlas/
 │   ├── __init__.py
-│   └── data.py                 # Two-publisher ingestion, contracts, joins
+│   ├── data.py                 # Two-publisher ingestion, contracts, joins
+│   └── analytics.py            # Multi-indicator panel, coverage, indexes, annual changes
 ├── r/
 │   └── geospatial_analysis.R   # Independent observed-data R analysis
 ├── tests/
-│   └── test_data.py            # Isolated deterministic unit tests
+│   ├── test_data.py            # Publisher parsing / contract tests
+│   └── test_analytics.py       # Pure analytical transformation tests
 ├── .github/workflows/
 │   └── ci.yml                  # Tests + Python compilation
 ├── Dockerfile
@@ -179,3 +191,7 @@ global-development-atlas/
 ### 2026-11-22: OWID source URL correction
 
 A deployed user session exposed an HTTP 404 at the previous, incorrect CO₂ per-capita CSV slug. The connector now uses the [published OWID Grapher endpoint](https://ourworldindata.org/grapher/co-emissions-per-capita.csv), and regression tests guard against accidentally restoring that broken slug. Live deployment validation is still required; tests do not imply live API availability.
+
+### 2026-11-22 — Studio v2 UX redesign
+
+Added four dedicated interactive workspaces, map modes and projection choices, ranking and distribution visuals, country trend indexing, observed adjacent-year change, two-axis indicator exploration, weighted bubble sizes from real population measurements, and source coverage audit. Added `atlas/analytics.py` and six unit tests. The full 13-test Python suite passed locally; **the live Streamlit rendering and CI run are not claimed as verified**.
