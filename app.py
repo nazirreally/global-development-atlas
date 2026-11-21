@@ -132,6 +132,10 @@ def style_chart(fig: go.Figure, height: int = 380, legend: bool = True) -> go.Fi
     fig.update_layout(
         height=height, paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)", font=dict(family="DM Sans", color=TEXT, size=12),
+        hoverlabel=dict(bgcolor="#132a3d", bordercolor="#4edcc9",
+                        font=dict(family="DM Sans", size=13, color="#f4fcff"),
+                        align="left", namelength=-1),
+        hovermode="closest",
         margin=dict(l=16, r=16, t=22, b=24),
         colorway=PALETTE, showlegend=legend,
         legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="left", x=0,
@@ -168,6 +172,17 @@ def format_value(value: float, metric: str) -> str:
     if metric == "SP.DYN.LE00.IN":
         return f"{value:,.1f} yrs"
     return f"{value:,.2f} t"
+
+
+def tooltip_rows(title: str, rows: list[tuple[str, str]]) -> str:
+    """Generate clean Plotly hover templates from trusted, static field labels.
+
+    Values must be Plotly customdata references, never externally sourced HTML.
+    """
+    lines = [f"<b>{escape(title)}</b>", "<span style='color:#a7c8dc'>━━━━━━━━━━━━━━━━</span>"]
+    for label, reference in rows:
+        lines.append(f"<b>{escape(label)}</b>: {reference}")
+    return "<br>".join(lines) + "<extra></extra>"
 
 
 def heading(kicker: str, title: str):
@@ -284,6 +299,15 @@ with overview:
         "Electric Violet": ["#1c2550", "#6755a8", "#aa8fff", "#f1ddff"],
         "Amber / Coral": ["#453146", "#c46e6d", "#ffba78", "#ffe1ab"],
     }
+    if not observed.empty:
+        # Formatting is only for display; every number still comes from published observations.
+        observed["hover_value"] = observed[primary].map(lambda v: format_value(v, primary))
+        observed["hover_rank"] = observed[primary].rank(method="min", ascending=False).astype(int).map(
+            lambda v: f"#{v:,} of {len(observed):,}"
+        )
+        observed["hover_co2"] = observed[CO2].map(
+            lambda v: format_value(v, CO2) if pd.notna(v) else "Not reported"
+        )
     if observed.empty:
         st.info("This year has no available observations in the chosen regions or income groups.")
     elif map_mode == "Choropleth":
