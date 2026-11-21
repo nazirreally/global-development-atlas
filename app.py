@@ -1,141 +1,425 @@
-"""Interactive World Bank + OWID geographic analytics. No simulated observations."""
+"""Global Development Atlas — interactive real-data country intelligence workbench."""
+from __future__ import annotations
+
+from html import escape
+
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
-from atlas.data import INDICATORS, countries, indicator, co2_per_capita, combine
+from atlas.analytics import (
+    CO2, annual_change, best_coverage_year, build_panel, coverage_by_year,
+    indexed_comparison,
+)
+from atlas.data import INDICATORS, countries, indicator, co2_per_capita
 
-st.set_page_config(page_title='Global Development Atlas', page_icon='🌍', layout='wide')
-st.markdown('''<style>
-.stApp{background:linear-gradient(130deg,#080e1c,#111e32 60%,#0b1423);color:#e8f1fc}
-.block-container{max-width:1500px;padding-top:2rem}
-[data-testid="stMetric"]{background:#172840;border:1px solid #294766;border-radius:16px;padding:16px}
-h1{letter-spacing:-.045em!important;font-weight:800!important}
-</style>''', unsafe_allow_html=True)
-st.caption('WORLD DATA LAB  /  VERIFIED PUBLIC OBSERVATIONS')
-st.title('🌍 Global Development Atlas')
-st.markdown('**Economies, people and emissions — one connected geographic intelligence workspace.**')
+st.set_page_config(
+    page_title="Global Development Atlas | Intelligence Studio",
+    page_icon="🌍", layout="wide", initial_sidebar_state="expanded",
+)
+
+# Palette: ink / electric mint / restrained lilac / cyan. Plotly figures inherit these tokens.
+INK = "#08111f"
+PANEL = "#101e30"
+GRID = "rgba(155,183,214,.12)"
+TEXT = "#e7eef9"
+MUTED = "#91a6bd"
+MINT = "#3de2c1"
+PALETTE = ["#3de2c1", "#84a6ff", "#ffce80", "#c49cff", "#f88f9d", "#75c9ff"]
+METRICS = {**INDICATORS, CO2: "CO₂ emissions per capita"}
+SOURCES = {**{key: "World Bank" for key in INDICATORS}, CO2: "Our World in Data"}
+
+st.markdown("""<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+:root{--bg:#08111f;--panel:#111e31;--line:#26384f;--mint:#3de2c1;--text:#e7eef9;--muted:#91a6bd}
+html,body,[class*="css"],.stApp{font-family:'DM Sans',sans-serif}
+.stApp{background:radial-gradient(ellipse 900px 550px at 62% -10%,#163b45 0,transparent 72%),radial-gradient(ellipse 680px 600px at 0 30%,#152340 0,transparent 65%),var(--bg);color:var(--text)}
+.block-container{padding-top:1.35rem;padding-bottom:3rem;max-width:1560px}
+[data-testid="stSidebar"]{background:linear-gradient(180deg,#0e192b,#0b1423)!important;border-right:1px solid #24354d}
+[data-testid="stSidebar"] .block-container{padding-top:2rem}
+[data-testid="stSidebar"] label, [data-testid="stSidebar"] p{color:#c9d8eb}
+[data-testid="stSidebar"] hr{border-color:#26384f}
+[data-testid="stHeader"]{background:transparent}
+#MainMenu,footer{visibility:hidden}
+h1,h2,h3,h4{font-family:'Manrope',sans-serif!important;letter-spacing:-.04em!important}
+h2{font-size:1.5rem!important;margin-bottom:.5rem!important}
+h3{font-size:1.1rem!important}
+.stTabs [data-baseweb="tab-list"]{gap:8px;background:#111f32;border:1px solid #263c50;border-radius:14px;padding:6px;margin-top:14px}
+.stTabs [data-baseweb="tab"]{color:#9eb2c9;border-radius:10px;padding:11px 17px;font-weight:700}
+.stTabs [aria-selected="true"]{background:#1d3f4b!important;color:#6bf2d3!important}
+.stTabs [data-baseweb="tab-highlight"],.stTabs [data-baseweb="tab-border"]{display:none}
+[data-testid="stMetric"]{border:1px solid #263c50;background:#122238;border-radius:15px;padding:17px}
+[data-testid="stMetricValue"]{color:#edf8ff}
+[data-testid="stPlotlyChart"]{border:1px solid #23394e;background:rgba(14,27,44,.52);border-radius:18px;padding:10px 13px}
+[data-testid="stDataFrame"]{border:1px solid #263b51;border-radius:12px;overflow:hidden}
+div[data-testid="stButton"] button[kind="primary"],div[data-testid="stDownloadButton"] button{background:#3de2c1;color:#071723;border:none;border-radius:10px;font-weight:800}
+div[data-testid="stButton"] button[kind="primary"]:hover,div[data-testid="stDownloadButton"] button:hover{background:#88ffdf;color:#071723}
+[data-baseweb="select"]>div,[data-baseweb="input"]>div{background:#14263b;border-color:#31506a}
+hr{border-color:#203349}
+.hero{position:relative;overflow:hidden;display:flex;justify-content:space-between;gap:24px;align-items:center;background:linear-gradient(115deg,rgba(18,42,61,.97),rgba(16,27,48,.94) 70%,rgba(38,57,76,.8));border:1px solid #2c4b5e;border-radius:24px;padding:30px 36px;margin:4px 0 18px;box-shadow:0 18px 55px rgba(0,0,0,.17)}
+.hero::after{content:'';position:absolute;right:-70px;top:-145px;width:390px;height:390px;border:1px solid rgba(61,226,193,.14);border-radius:50%;box-shadow:0 0 0 56px rgba(61,226,193,.035),0 0 0 112px rgba(61,226,193,.026);pointer-events:none}
+.eyebrow{font-size:11px;letter-spacing:.19em;text-transform:uppercase;color:#67e7d0;font-weight:800;margin-bottom:13px}
+.hero h1{font-size:clamp(2.1rem,3.5vw,3.65rem);line-height:1.08;color:#f4f9ff;margin:0 0 14px;letter-spacing:-.065em}
+.hero h1 span{background:linear-gradient(90deg,#5defd0,#9bc8ff);background-clip:text;-webkit-background-clip:text;color:transparent}
+.hero p{max-width:720px;color:#a9bfd4;font-size:14px;line-height:1.65;margin:0}
+.hero-side{flex-shrink:0;z-index:1;display:flex;flex-direction:column;align-items:flex-end;gap:13px}
+.live-badge{display:inline-flex;align-items:center;gap:9px;background:#143a38;border:1px solid #2a756b;border-radius:99px;padding:8px 13px;color:#9bf6e1;font-size:11px;font-weight:800;letter-spacing:.055em}
+.dot{height:7px;width:7px;display:inline-block;background:#3de2c1;border-radius:99px;box-shadow:0 0 12px #3de2c1}
+.hero-foot{font-size:11px;color:#b7c8db;text-align:right}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin:6px 0 16px}
+.kpi{background:linear-gradient(150deg,#14273b,#0e1c2e);border:1px solid #294057;border-radius:17px;padding:20px 21px;min-height:124px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;width:36%;height:2px;background:#3de2c1;opacity:.8}
+.kpi-label{color:#93adc4;font-size:10px;text-transform:uppercase;letter-spacing:.12em;font-weight:800}
+.kpi-number{color:#f1f8ff;font-family:'Manrope',sans-serif;font-size:clamp(20px,2.2vw,30px);font-weight:800;letter-spacing:-.045em;margin-top:11px;line-height:1.12}
+.kpi-note{font-size:11px;color:#8fa9bf;margin-top:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.section-eyebrow{color:#4fe3cb;font-weight:800;font-size:11px;letter-spacing:.18em;text-transform:uppercase;margin:9px 0 4px}
+.section-heading{font-family:'Manrope',sans-serif;font-weight:800;font-size:23px;letter-spacing:-.045em;color:#eef7ff;margin:0 0 14px}
+.small-pill{border-radius:8px;background:#163344;border:1px solid #31556a;display:inline-block;padding:6px 11px;font-size:11px;color:#91e9d9;margin:0 6px 8px 0}
+.callout{background:#12263a;border:1px solid #315269;border-radius:14px;padding:15px 17px;color:#b2c8da;font-size:12px;line-height:1.7;margin-top:14px}
+.sidebar-brand{font-family:'Manrope',sans-serif;font-weight:800;color:#e9f4ff;font-size:17px;letter-spacing:-.03em}
+.sidebar-sub{font-size:10px;font-weight:800;color:#4fe3cb;letter-spacing:.18em;margin:5px 0 23px}
+.sidebar-foot{font-size:11px;color:#819cb5;line-height:1.7;margin-top:16px}
+@media(max-width:900px){.hero{padding:24px}.hero-side{display:none}.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.kpi{padding:14px;min-height:112px}.hero h1{font-size:2rem}}
+</style>""", unsafe_allow_html=True)
 
 
-@st.cache_data(ttl=86400, show_spinner='Retrieving real-world observations…')
-def load():
-    return countries(), {code: indicator(code) for code in INDICATORS}, co2_per_capita()
+def style_chart(fig: go.Figure, height: int = 380, legend: bool = True) -> go.Figure:
+    fig.update_layout(
+        height=height, paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)", font=dict(family="DM Sans", color=TEXT, size=12),
+        margin=dict(l=16, r=16, t=22, b=24),
+        colorway=PALETTE, showlegend=legend,
+        legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="left", x=0,
+                    font=dict(size=10), bgcolor="rgba(0,0,0,0)"),
+    )
+    fig.update_xaxes(showgrid=True, gridcolor=GRID, zeroline=False, title_font=dict(color=MUTED))
+    fig.update_yaxes(showgrid=True, gridcolor=GRID, zeroline=False, title_font=dict(color=MUTED))
+    return fig
 
+
+def chart(fig: go.Figure):
+    st.plotly_chart(fig, use_container_width=True, theme=None,
+                    config={"displaylogo": False, "responsive": True, "scrollZoom": True})
+
+
+def format_value(value: float, metric: str) -> str:
+    if pd.isna(value):
+        return "—"
+    if metric == "NY.GDP.MKTP.CD":
+        for limit, suffix in [(1e12, "T"), (1e9, "B"), (1e6, "M")]:
+            if abs(value) >= limit:
+                return f"${value / limit:,.2f}{suffix}"
+        return f"${value:,.0f}"
+    if metric == "SP.POP.TOTL":
+        if abs(value) >= 1e9:
+            return f"{value / 1e9:,.2f}B"
+        if abs(value) >= 1e6:
+            return f"{value / 1e6:,.1f}M"
+        return f"{value:,.0f}"
+    if metric == "NY.GDP.PCAP.CD":
+        return f"${value:,.0f}"
+    if metric == "EG.ELC.RNEW.ZS":
+        return f"{value:,.1f}%"
+    if metric == "SP.DYN.LE00.IN":
+        return f"{value:,.1f} yrs"
+    return f"{value:,.2f} t"
+
+
+def heading(kicker: str, title: str):
+    st.markdown(
+        f'<div class="section-eyebrow">{escape(kicker)}</div>'
+        f'<div class="section-heading">{escape(title)}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def kpis(cards: list[tuple[str, str, str]]):
+    elements = [
+        '<div class="kpi"><div class="kpi-label">' + escape(label) +
+        '</div><div class="kpi-number">' + escape(value) +
+        '</div><div class="kpi-note">' + escape(note) + '</div></div>'
+        for label, value, note in cards
+    ]
+    st.markdown('<div class="kpi-grid">' + ''.join(elements) + '</div>', unsafe_allow_html=True)
+
+
+@st.cache_data(ttl=86400, show_spinner="Loading verified World Bank and OWID sources…")
+def load_real_data() -> pd.DataFrame:
+    meta = countries()
+    wb = {code: indicator(code) for code in INDICATORS}
+    owid = co2_per_capita()
+    return build_panel(meta, wb, owid)
+
+
+st.markdown("""<div class="hero"><div>
+<div class="eyebrow">◈ &nbsp; WORLD DATA LAB / INTELLIGENCE STUDIO 02</div>
+<h1>Make sense of <span>our world.</span></h1>
+<p>Explore the forces shaping countries and communities — economic growth,
+health, energy, population and carbon emissions — through real, connected data.</p>
+</div><div class="hero-side"><div class="live-badge"><span class="dot"></span> VERIFIED PUBLIC SOURCES</div>
+<div class="hero-foot">World Bank &nbsp; / &nbsp; Our World in Data<br>1990—present · Country-year observations</div>
+</div></div>""", unsafe_allow_html=True)
 
 try:
-    meta, wb, owid = load()
+    panel = load_real_data()
 except Exception as exc:
-    st.error(f'Live data could not be retrieved: {exc}')
-    st.info(
-        'This application deliberately does not fall back to synthetic or fabricated data. '
-        'Check internet connectivity and source availability.'
-    )
+    st.error(f"Data ingestion failed: {exc}")
+    st.info("We do not replace unavailable observations with synthetic or fabricated data. "
+            "Please verify the source APIs and refresh the app.")
     st.stop()
 
 with st.sidebar:
-    st.header('Explore the data')
-    code = st.selectbox(
-        'World Bank indicator',
-        list(INDICATORS),
-        format_func=lambda x: INDICATORS[x],
+    st.markdown('<div class="sidebar-brand">◈ &nbsp; ATLAS CONTROLS</div>'
+                '<div class="sidebar-sub">BUILD YOUR DATA STORY</div>', unsafe_allow_html=True)
+    primary = st.selectbox("Primary indicator", list(METRICS), index=2,
+                           format_func=lambda x: METRICS[x])
+    available = sorted(panel.loc[panel[primary].notna(), "year"].unique().tolist())
+    year = st.select_slider("Reporting year", options=available,
+                            value=best_coverage_year(panel, primary))
+    st.markdown("---")
+    all_regions = sorted(panel.region.dropna().unique().tolist())
+    regions = st.multiselect("Regions", all_regions, default=all_regions)
+    all_income = sorted(panel.income.dropna().unique().tolist())
+    incomes = st.multiselect("Income groups", all_income, default=all_income)
+    st.markdown("---")
+    all_countries = sorted(panel.country.dropna().unique().tolist())
+    preferred = [c for c in ("Pakistan", "India", "China", "United States", "Germany")
+                 if c in all_countries]
+    selected_countries = st.multiselect("Country comparison set", all_countries,
+                                        default=preferred)
+    st.markdown(
+        '<div class="sidebar-foot">● All charts use observed data only.<br>'
+        '● Unreported years stay missing.<br>● Publisher updates cached for 24h.</div>',
+        unsafe_allow_html=True,
     )
-    mode = st.radio('Geographic metric', ['World Bank indicator', 'CO₂ per capita'])
-    st.caption('CO₂ data: Our World in Data · GDP and development: World Bank')
 
-try:
-    df = combine(meta, wb[code], owid)
-except ValueError as exc:
-    st.error(str(exc))
+scoped = panel[panel.region.isin(regions) & panel.income.isin(incomes)].copy()
+observed = scoped.loc[scoped.year.eq(year) & scoped[primary].notna()].copy()
+if scoped.empty:
+    st.warning("No countries match the selected region and income filters. Try widening the filters.")
     st.stop()
 
-all_years = sorted(df.year.unique().tolist())
-with st.sidebar:
-    year = st.select_slider('Year', options=all_years, value=all_years[-1])
-    regions = st.multiselect(
-        'Regions', sorted(df.region.unique()), default=sorted(df.region.unique())
-    )
-    selected = st.multiselect(
-        'Compare countries',
-        sorted(df.country.unique()),
-        default=[
-            c for c in ['Pakistan', 'India', 'United States', 'China', 'Germany']
-            if c in df.country.unique()
-        ],
-    )
-    st.caption(
-        f'Actual joined observations: {len(df):,} country-years · '
-        f'{df.iso3.nunique()} countries · {df.year.min()}–{df.year.max()}'
-    )
+valid_countries = scoped.iso3.nunique()
+coverage_pct = 100 * observed.iso3.nunique() / valid_countries if valid_countries else 0
+peak = observed.nlargest(1, primary)
+peak_label = peak.country.iloc[0] if not peak.empty else "No observations"
+change = annual_change(scoped, primary, year)
+median_change = change.change_pct.median() if not change.empty else float("nan")
+kpis([
+    ("Countries reporting", f"{observed.iso3.nunique():,}", f"{coverage_pct:.0f}% of selected countries"),
+    ("Observed median", format_value(observed[primary].median(), primary), "Unweighted country median"),
+    ("Highest reported value", format_value(peak[primary].iloc[0], primary) if not peak.empty else "—", peak_label),
+    ("Median annual change", f"{median_change:+.1f}%" if pd.notna(median_change) else "—",
+     f"{len(change)} observed year-over-year pairs"),
+])
 
-subset = df[df.region.isin(regions)]
-current = subset[subset.year.eq(year)]
-metric = 'value_wb' if mode == 'World Bank indicator' else 'value_co2'
-label = INDICATORS[code] if mode == 'World Bank indicator' else 'CO₂ per capita (tonnes)'
-if current.empty:
-    st.warning('No observations match these filters.')
-    st.stop()
+st.markdown(f'<span class="small-pill">◉ &nbsp; {escape(METRICS[primary])}</span>'
+            f'<span class="small-pill">◈ &nbsp; {year}</span>'
+            f'<span class="small-pill">◌ &nbsp; {escape(SOURCES[primary])}</span>'
+            f'<span class="small-pill">◎ &nbsp; {len(scoped):,} real country-year rows</span>',
+            unsafe_allow_html=True)
 
-c1, c2, c3, c4 = st.columns(4)
-c1.metric('COUNTRIES IN VIEW', f'{current.iso3.nunique():,}')
-c2.metric('OBSERVED COUNTRY-YEARS', f'{len(subset):,}')
-c3.metric('LATEST SELECTED YEAR', str(year))
-c4.metric('REGIONS COVERED', str(current.region.nunique()))
+overview, compare, relationships, lab = st.tabs([
+    "◎  World explorer", "⌁  Country studio", "◈  Relationships", "▦  Data lab",
+])
 
-st.subheader('Geographic intelligence')
-fig = px.choropleth(
-    current, locations='iso3', color=metric, hover_name='country',
-    color_continuous_scale='Tealgrn', projection='natural earth',
-    labels={metric: label}, template='plotly_dark',
-)
-fig.update_layout(
-    height=510, margin=dict(l=0, r=0, t=10, b=0),
-    paper_bgcolor='rgba(0,0,0,0)',
-    geo=dict(bgcolor='rgba(0,0,0,0)', showframe=False),
-)
-st.plotly_chart(fig, use_container_width=True)
-
-left, right = st.columns([1.35, 1])
-with left:
-    st.subheader('Historical trajectories')
-    trends = subset[subset.country.isin(selected)]
-    if trends.empty:
-        st.info('Select countries in the sidebar to compare trends.')
-    else:
-        line = px.line(
-            trends, x='year', y=metric, color='country', markers=False,
-            labels={metric: label, 'year': 'Year'}, template='plotly_dark',
+with overview:
+    heading("01 / GEO INTELLIGENCE", "Explore the world through data")
+    opt1, opt2, opt3 = st.columns([1.25, 1, 1])
+    with opt1:
+        map_mode = st.radio("Map visualization", ["Choropleth", "Proportional circles"],
+                            horizontal=True)
+    with opt2:
+        projection = st.selectbox("Map projection", ["natural earth", "orthographic", "equirectangular"],
+                                  format_func=lambda v: v.title())
+    with opt3:
+        scale = st.selectbox("Color palette", ["Mint / Cyan", "Electric Violet", "Amber / Coral"])
+    gradients = {
+        "Mint / Cyan": ["#142f48", "#198b98", "#49e5c5", "#b6ffdf"],
+        "Electric Violet": ["#1c2550", "#6755a8", "#aa8fff", "#f1ddff"],
+        "Amber / Coral": ["#453146", "#c46e6d", "#ffba78", "#ffe1ab"],
+    }
+    if observed.empty:
+        st.info("This year has no available observations in the chosen regions or income groups.")
+    elif map_mode == "Choropleth":
+        world = px.choropleth(
+            observed, locations="iso3", color=primary, hover_name="country",
+            hover_data={"region": True, "income": True, "year": True, primary: ":,.3f", "iso3": False},
+            color_continuous_scale=gradients[scale],
+            labels={primary: METRICS[primary]}, projection=projection,
         )
-        line.update_layout(height=390, paper_bgcolor='rgba(0,0,0,0)')
-        st.plotly_chart(line, use_container_width=True)
-with right:
-    st.subheader('Economic / environmental relationship')
-    scatter = px.scatter(
-        current, x='value_wb', y='value_co2', color='region',
-        hover_name='country',
-        labels={
-            'value_wb': INDICATORS[code],
-            'value_co2': 'CO₂ per capita (tonnes)',
-        },
-        template='plotly_dark',
-    )
-    scatter.update_layout(height=390, paper_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(scatter, use_container_width=True)
+        world.update_geos(
+            showframe=False, showcoastlines=True, coastlinecolor="#364b62",
+            showcountries=True, countrycolor="#15273b", showland=True,
+            landcolor="#152437", showocean=True, oceancolor="#0a1627",
+            bgcolor="rgba(0,0,0,0)",
+        )
+        world = style_chart(world, 530)
+        world.update_layout(coloraxis_colorbar=dict(thickness=12, len=.7, outlinewidth=0))
+        chart(world)
+    else:
+        circles = observed.loc[observed[primary].gt(0)].copy()
+        if circles.empty:
+            st.info("Proportional circles require strictly positive observations.")
+        else:
+            world = px.scatter_geo(
+                circles, locations="iso3", size=primary, color=primary,
+                hover_name="country", size_max=38, projection=projection,
+                color_continuous_scale=gradients[scale],
+                labels={primary: METRICS[primary]},
+            )
+            world.update_geos(
+                showframe=False, showcoastlines=True, coastlinecolor="#364b62",
+                showcountries=True, countrycolor="#1d3044", showland=True,
+                landcolor="#152437", showocean=True, oceancolor="#0a1627",
+                bgcolor="rgba(0,0,0,0)",
+            )
+            chart(style_chart(world, 530))
+    left, right = st.columns([1.1, 1])
+    with left:
+        heading("02 / RANKINGS", "Country leaderboard")
+        rank_direction = st.radio("Sort countries", ["Highest", "Lowest"], horizontal=True)
+        top_n = st.slider("Countries displayed", 5, 25, 12)
+        ranked = (observed.nsmallest(top_n, primary) if rank_direction == "Lowest"
+                  else observed.nlargest(top_n, primary)).sort_values(primary)
+        bars = px.bar(ranked, x=primary, y="country", color=primary,
+                      orientation="h", color_continuous_scale=gradients[scale],
+                      labels={primary: METRICS[primary], "country": ""},
+                      hover_name="country")
+        bars.update_layout(coloraxis_showscale=False)
+        chart(style_chart(bars, 390, legend=False))
+    with right:
+        heading("03 / DISTRIBUTION", "Regional spread")
+        spread = px.box(observed, x="region", y=primary, color="region",
+                        points="outliers", color_discrete_sequence=PALETTE,
+                        labels={"region": "Region", primary: METRICS[primary]})
+        spread.update_xaxes(tickangle=-25)
+        chart(style_chart(spread, 390, legend=False))
 
-st.subheader('Observed records and export')
-st.dataframe(
-    current[['country', 'iso3', 'region', 'income', 'year', 'value_wb', 'value_co2']]
-    .sort_values('country'),
-    use_container_width=True,
-    hide_index=True,
-)
-st.download_button(
-    'Download filtered, joined observations (CSV)',
-    subset.to_csv(index=False).encode(),
-    file_name='development_atlas_real_observations.csv',
-    mime='text/csv',
-)
-st.caption(
-    'Source provenance: World Bank Indicators API and Our World in Data Grapher. '
-    'Values are observed/published series; missing pairs are excluded, not invented. '
-    'The inner join may reduce country-year coverage.'
-)
+with compare:
+    heading("04 / TIME SERIES", "Country comparison studio")
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        normalize = st.checkbox("Index countries to a common baseline (100)", value=False)
+    with c2:
+        historical_start = st.select_slider("Start year", options=available,
+                                             value=available[max(0, len(available) - 21)])
+    countries_for_trends = [c for c in selected_countries if c in scoped.country.unique()]
+    trends = scoped.loc[scoped.country.isin(countries_for_trends)
+                        & scoped.year.ge(historical_start) & scoped[primary].notna()].copy()
+    if not countries_for_trends:
+        st.info("Choose one or more countries in the sidebar to compare their observed trajectories.")
+    else:
+        if normalize:
+            base_year = st.select_slider("Index baseline year", options=[y for y in available if y >= historical_start],
+                                         value=historical_start)
+            trends = indexed_comparison(trends, primary, base_year)
+            ylabel = "Index (baseline = 100)"
+            ycolumn = "index"
+            if trends.empty:
+                st.warning("None of the selected countries have a valid, nonzero observation at that baseline year.")
+        else:
+            ylabel = METRICS[primary]
+            ycolumn = primary
+        if not trends.empty:
+            timeline = px.line(trends, x="year", y=ycolumn, color="country", markers=True,
+                               color_discrete_sequence=PALETTE,
+                               labels={"year": "Year", ycolumn: ylabel, "country": "Country"})
+            timeline.update_traces(line=dict(width=3), marker=dict(size=5))
+            chart(style_chart(timeline, 480))
+        heading("05 / MOMENTUM", "Actual year-over-year change")
+        movements = annual_change(scoped.loc[scoped.country.isin(countries_for_trends)], primary, year)
+        if movements.empty:
+            st.info("No adjacent-year observations exist for these countries and this reporting year.")
+        else:
+            movements["direction"] = movements.change_pct.ge(0).map({True: "Up", False: "Down"})
+            deltas = px.bar(movements.sort_values("change_pct"), x="country", y="change_pct",
+                            color="direction", color_discrete_map={"Up": MINT, "Down": "#f88f9d"},
+                            labels={"change_pct": "Change (%)", "country": "Country"})
+            chart(style_chart(deltas, 330, legend=False))
+
+with relationships:
+    heading("06 / MULTI-VARIATE RESEARCH", "Discover patterns between indicators")
+    r1, r2, r3 = st.columns(3)
+    with r1:
+        x_metric = st.selectbox("X-axis indicator", list(METRICS), index=2,
+                                format_func=lambda x: METRICS[x], key="x_axis")
+    with r2:
+        y_metric = st.selectbox("Y-axis indicator", list(METRICS),
+                                index=len(METRICS) - 1, format_func=lambda x: METRICS[x], key="y_axis")
+    with r3:
+        bubble_population = st.checkbox("Scale circles by population", value=True)
+    fields = [x_metric, y_metric]
+    if bubble_population:
+        fields.append("SP.POP.TOTL")
+    scatter_data = scoped.loc[scoped.year.eq(year)].dropna(subset=list(set(fields))).copy()
+    scatter_data = scatter_data[scatter_data[x_metric].notna() & scatter_data[y_metric].notna()]
+    scatter_data = scatter_data.loc[scatter_data[x_metric].ne(float("inf")) & scatter_data[y_metric].ne(float("inf"))]
+    if bubble_population:
+        scatter_data = scatter_data[scatter_data["SP.POP.TOTL"].gt(0)]
+    if len(scatter_data) < 3:
+        st.info("At least three matching real country-year observations are needed for this comparison.")
+    elif x_metric == y_metric:
+        st.info("Select two different indicators to explore their relationship.")
+    else:
+        correlation = scatter_data[[x_metric, y_metric]].corr().iloc[0, 1]
+        st.markdown(f'<span class="small-pill">{len(scatter_data)} matched countries</span>'
+                    f'<span class="small-pill">Pearson r: {correlation:.3f}</span>'
+                    f'<span class="small-pill">{year} reported data</span>',
+                    unsafe_allow_html=True)
+        args = dict(data_frame=scatter_data, x=x_metric, y=y_metric,
+                    color="region", hover_name="country", color_discrete_sequence=PALETTE,
+                    labels={x_metric: METRICS[x_metric], y_metric: METRICS[y_metric]},
+                    size_max=55)
+        if bubble_population:
+            args["size"] = "SP.POP.TOTL"
+        graph = px.scatter(**args)
+        graph.update_traces(marker=dict(opacity=.84, line=dict(width=.7, color="#08111f")))
+        chart(style_chart(graph, 520))
+        st.markdown('<div class="callout"><b>Interpretation notice:</b> Pearson correlation is a descriptive '
+                    'association across the currently observed countries. Neither a positive nor negative '
+                    'correlation demonstrates causality. All datasets may have different reporting coverage.</div>',
+                    unsafe_allow_html=True)
+
+with lab:
+    heading("07 / DATA PROVENANCE", "Explore every observation")
+    d1, d2, d3 = st.columns(3)
+    d1.metric("REAL JOINED COUNTRY-YEARS", f"{len(scoped):,}")
+    d2.metric("COUNTRIES IN SCOPE", f"{scoped.iso3.nunique():,}")
+    d3.metric("YEARS REPRESENTED", f"{scoped.year.nunique():,}")
+    st.markdown("**Source coverage by indicator**")
+    coverage_rows = []
+    for code, name in METRICS.items():
+        nonnull = scoped.loc[scoped[code].notna()]
+        coverage_rows.append({"Metric": name, "Publisher": SOURCES[code],
+                              "Reported country-years": len(nonnull),
+                              "Reporting countries": nonnull.iso3.nunique(),
+                              "Earliest year": nonnull.year.min() if len(nonnull) else None,
+                              "Latest year": nonnull.year.max() if len(nonnull) else None})
+    st.dataframe(pd.DataFrame(coverage_rows), hide_index=True, use_container_width=True)
+    heading("08 / OBSERVATION COMPLETENESS", "Reporting coverage over time")
+    cover = coverage_by_year(scoped, primary)
+    cover_fig = px.area(cover, x="year", y="countries", line_shape="spline",
+                        labels={"countries": "Countries reporting", "year": "Year"})
+    cover_fig.update_traces(line=dict(color=MINT, width=3), fillcolor="rgba(61,226,193,.13)")
+    chart(style_chart(cover_fig, 280, legend=False))
+    st.markdown("**Filter and export observed records**")
+    data_years = sorted(scoped.year.unique().tolist())
+    start, end = st.select_slider("Export year range", options=data_years,
+                                  value=(min(data_years), max(data_years)))
+    export = scoped[scoped.year.between(start, end)].sort_values(["country", "year"])
+    columns = ["country", "iso3", "region", "income", "year"] + list(METRICS)
+    st.dataframe(export[columns], use_container_width=True, hide_index=True, height=370)
+    st.download_button("↓ Download real observations (CSV)", export[columns].to_csv(index=False).encode(),
+                       file_name=f"global_development_atlas_{start}_{end}.csv", mime="text/csv")
+    st.markdown("""<div class="callout"><b>Data lineage:</b> World Bank Indicators API
+    (GDP, population, GDP per capita, life expectancy, renewable electricity), World Bank country
+    metadata (region and income), and Our World in Data Grapher (CO₂ per capita).
+    Countries and years are joined by ISO3 and calendar year; missing observations remain missing.
+    Published historical values can be revised by their providers.</div>""", unsafe_allow_html=True)
+
+st.markdown("<div style='text-align:center;color:#64829c;font-size:11px;margin:35px 0 8px'>"
+            "GLOBAL DEVELOPMENT ATLAS  /  DATA IS REAL · CONTEXT IS EVERYTHING · NO SYNTHETIC OBSERVATIONS"
+            "</div>", unsafe_allow_html=True)
