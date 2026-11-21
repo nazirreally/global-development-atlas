@@ -6,7 +6,7 @@ import pandas as pd
 import requests
 
 WB = 'https://api.worldbank.org/v2'
-OWID = 'https://ourworldindata.org/grapher/co2-per-capita.csv'
+OWID = 'https://ourworldindata.org/grapher/co-emissions-per-capita.csv'
 INDICATORS = {
     'NY.GDP.MKTP.CD': 'GDP (current USD)',
     'SP.POP.TOTL': 'Population',
