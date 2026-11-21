@@ -44,3 +44,22 @@ def test_owid_contract_rejects_missing_fields():
                return_value=Mock(content=b'country,year,co2\nPakistan,2020,1\n')):
         with pytest.raises(ValueError, match='contract'):
             co2_per_capita()
+
+
+def test_owid_url_matches_published_grapher_slug():
+    from atlas.data import OWID
+    assert OWID == 'https://ourworldindata.org/grapher/co-emissions-per-capita.csv'
+
+
+def test_owid_accepts_real_grapher_csv_schema_and_excludes_aggregates():
+    csv = (
+        'Entity,Code,Year,Annual CO₂ emissions (per capita)\n'
+        'Pakistan,PAK,2022,0.95\n'
+        'World,OWID_WRL,2022,4.9\n'
+        'Germany,DEU,2022,7.6\n'
+    ).encode('utf-8')
+    with patch('atlas.data.requests.get', return_value=Mock(content=csv)):
+        result = co2_per_capita()
+    assert set(result.iso3) == {'PAK', 'DEU'}
+    assert len(result) == 2
+    assert result.loc[result.iso3.eq('PAK'), 'value'].iloc[0] == 0.95
