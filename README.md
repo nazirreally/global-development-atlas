@@ -7,10 +7,10 @@
 ![Streamlit](https://img.shields.io/badge/Streamlit-dashboard-FF4B4B?logo=streamlit&logoColor=white)
 ![R](https://img.shields.io/badge/R-ggplot2_companion-276DC3?logo=r&logoColor=white)
 ![Data](https://img.shields.io/badge/Data-real_public_sources-14B8A6)
-![Tests](https://img.shields.io/badge/Tests-13_local_passed-3B82F6)
+![Tests](https://img.shields.io/badge/Tests-14_local_passed-3B82F6)
 ![CI](https://img.shields.io/badge/GitHub_Actions-configured_not_verified-64748B)
 
-> **Verification note:** The current 13-test Python suite passed locally on 2026-11-22 (analytics transformations and source-contract tests). Source compilation also passed. Streamlit runtime rendering, full live API retrieval, R execution, and GitHub Actions success are **not yet verified**. No benchmark, dataset size, deployment URL or screenshot is invented.
+> **Verification note:** The current 14-test Python suite passed locally on 2026-11-22 (analytics transformations and source-contract tests). Source compilation also passed. Streamlit runtime rendering, full live API retrieval, R execution, and GitHub Actions success are **not yet verified**. No benchmark, dataset size, deployment URL or screenshot is invented.
 
 ## Why this project?
 
@@ -140,7 +140,7 @@ python -m pytest -q
 python -m compileall -q app.py atlas
 ```
 
-**Verification performed:** 13 current Python unit tests passed locally, including World Bank/OWID contracts, multi-source panel construction, missingness, index rebasing and adjacent-year comparisons, covering temporal join behavior, duplicate-key rejection, unsupported indicator rejection, malformed World Bank payloads, and OWID CSV contract changes.
+**Verification performed:** 14 current Python tests passed locally, including World Bank/OWID contracts, multi-source panel construction, missingness, index rebasing and adjacent-year comparisons, covering temporal join behavior, duplicate-key rejection, unsupported indicator rejection, malformed World Bank payloads, and OWID CSV contract changes.
 
 The GitHub Actions workflow is configured to run pytest and source compilation on push and pull requests. Its result must be checked in the [Actions tab](https://github.com/nazirreally/global-development-atlas/actions); **CI success is not assumed**.
 
@@ -157,7 +157,8 @@ global-development-atlas/
 │   └── geospatial_analysis.R   # Independent observed-data R analysis
 ├── tests/
 │   ├── test_data.py            # Publisher parsing / contract tests
-│   └── test_analytics.py       # Pure analytical transformation tests
+│   ├── test_analytics.py       # Pure analytical transformation tests
+│   └── test_dashboard_smoke.py # Offline exercise of all four workspaces
 ├── .github/workflows/
 │   └── ci.yml                  # Tests + Python compilation
 ├── Dockerfile
@@ -194,4 +195,6 @@ A deployed user session exposed an HTTP 404 at the previous, incorrect CO₂ per
 
 ### 2026-11-22 — Studio v2 UX redesign
 
-Added four dedicated interactive workspaces, map modes and projection choices, ranking and distribution visuals, country trend indexing, observed adjacent-year change, two-axis indicator exploration, weighted bubble sizes from real population measurements, and source coverage audit. Added `atlas/analytics.py` and six unit tests. The full 13-test Python suite passed locally; **the live Streamlit rendering and CI run are not claimed as verified**.
+Added four dedicated interactive workspaces, map modes and projection choices, ranking and distribution visuals, country trend indexing, observed adjacent-year change, two-axis indicator exploration, weighted bubble sizes from real population measurements, and source coverage audit. Added `atlas/analytics.py` and six unit tests. The full 14-test Python suite passed locally; **the live Streamlit rendering and CI run are not claimed as verified**.
+
+**Additional verification:** An offline Plotly code-path smoke test uses isolated deterministic *test fixtures only* to execute the four workspaces; 14/14 total tests passed locally. This verifies Python code paths, not the visual rendering or the live data APIs.
