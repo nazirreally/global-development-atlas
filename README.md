@@ -7,10 +7,10 @@
 ![Streamlit](https://img.shields.io/badge/Streamlit-dashboard-FF4B4B?logo=streamlit&logoColor=white)
 ![R](https://img.shields.io/badge/R-ggplot2_companion-276DC3?logo=r&logoColor=white)
 ![Data](https://img.shields.io/badge/Data-real_public_sources-14B8A6)
-![Tests](https://img.shields.io/badge/Tests-14_local_passed-3B82F6)
+![Tests](https://img.shields.io/badge/Tests-16_local_passed-3B82F6)
 ![CI](https://img.shields.io/badge/GitHub_Actions-configured_not_verified-64748B)
 
-> **Verification note:** The current 14-test Python suite passed locally on 2026-11-22 (analytics transformations and source-contract tests). Source compilation also passed. Streamlit runtime rendering, full live API retrieval, R execution, and GitHub Actions success are **not yet verified**. No benchmark, dataset size, deployment URL or screenshot is invented.
+> **Verification note:** The current 16-test Python suite passed locally on 2026-11-22, including offline dashboard smoke tests and visual style contracts. Source compilation also passed. Streamlit browser rendering after Studio v3, full live API retrieval, R execution, and GitHub Actions success are **not yet verified**. No benchmark, dataset size, deployment URL or screenshot is invented.
 
 ## Why this project?
 
@@ -18,7 +18,7 @@ Economic indicators and environmental impacts are often examined in disconnected
 
 **Intended users:** data analysts, public policy researchers, environmental analysts, and students studying international development.
 
-## Intelligence Studio v2 — interactive workspaces
+## Intelligence Studio v3 — interactive workspaces
 
 The dashboard is deliberately structured as a **four-workspace research tool**, not a static collection of charts. A custom midnight-navy / mint / violet visual system adds a branded hero, dynamic KPI cards, responsive layout and high-contrast Plotly charts.
 
@@ -140,7 +140,7 @@ python -m pytest -q
 python -m compileall -q app.py atlas
 ```
 
-**Verification performed:** 14 current Python tests passed locally, including World Bank/OWID contracts, multi-source panel construction, missingness, index rebasing and adjacent-year comparisons, covering temporal join behavior, duplicate-key rejection, unsupported indicator rejection, malformed World Bank payloads, and OWID CSV contract changes.
+**Verification performed:** 16 current Python tests passed locally, including World Bank/OWID contracts, multi-source panel construction, missingness, index rebasing and adjacent-year comparisons, covering temporal join behavior, duplicate-key rejection, unsupported indicator rejection, malformed World Bank payloads, and OWID CSV contract changes.
 
 The GitHub Actions workflow is configured to run pytest and source compilation on push and pull requests. Its result must be checked in the [Actions tab](https://github.com/nazirreally/global-development-atlas/actions); **CI success is not assumed**.
 
@@ -158,7 +158,8 @@ global-development-atlas/
 ├── tests/
 │   ├── test_data.py            # Publisher parsing / contract tests
 │   ├── test_analytics.py       # Pure analytical transformation tests
-│   └── test_dashboard_smoke.py # Offline exercise of all four workspaces
+│   ├── test_dashboard_smoke.py # Offline exercise of all four workspaces / tooltips
+│   └── test_presentation.py    # Dark theme, selection and contrast contract tests
 ├── .github/workflows/
 │   └── ci.yml                  # Tests + Python compilation
 ├── Dockerfile
@@ -198,3 +199,17 @@ A deployed user session exposed an HTTP 404 at the previous, incorrect CO₂ per
 Added four dedicated interactive workspaces, map modes and projection choices, ranking and distribution visuals, country trend indexing, observed adjacent-year change, two-axis indicator exploration, weighted bubble sizes from real population measurements, and source coverage audit. Added `atlas/analytics.py` and six unit tests. The full 14-test Python suite passed locally; **the live Streamlit rendering and CI run are not claimed as verified**.
 
 **Additional verification:** An offline Plotly code-path smoke test uses isolated deterministic *test fixtures only* to execute the four workspaces; 14/14 total tests passed locally. This verifies Python code paths, not the visual rendering or the live data APIs.
+
+
+### 2026-11-22 — Studio v3 accessibility and hover refinement
+
+User review of the deployed interface identified red native widget accents, low-contrast inactive tabs and labels, and generic chart tooltips. Studio v3 addresses these issues:
+
+- New `.streamlit/config.toml` pins the real Streamlit dark theme and mint primary color instead of the framework's default red selection styling.
+- Explicit dark-mode BaseWeb overrides style multiselect chips, dropdowns, native selection inputs, slider thumbs, labels, and disabled/inactive tab appearance. These overrides are Streamlit-DOM-sensitive and need a browser check after future Streamlit upgrades.
+- Plotly now uses unified **deep navy hover cards**, mint borders, higher-contrast typography, and readable left-aligned content.
+- World maps show observed indicator values, ranking within the filtered view, region, income group, CO₂ per-capita (when reported), and source year. Country comparisons, leaderboard and relationships charts provide formatted, contextual hover values.
+- Added two presentation-contract tests. The offline Plotly smoke test asserts geographic hover template content and per-figure hover styling.
+- **Verified locally:** 16/16 Python tests and source compilation passed. **Not verified:** rendered appearance in an actual Streamlit browser, GitHub Actions outcome and live external API retrieval from the build environment.
+
+**The analytical data policy is unchanged:** only real publisher observations enter the application. Deterministic fixtures in unit tests do not enter the dashboard or reported analytics.
