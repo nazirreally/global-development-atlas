@@ -313,10 +313,18 @@ with overview:
     elif map_mode == "Choropleth":
         world = px.choropleth(
             observed, locations="iso3", color=primary, hover_name="country",
-            hover_data={"region": True, "income": True, "year": True, primary: ":,.3f", "iso3": False},
+            custom_data=["region", "income", "year", "hover_value", "hover_rank", "hover_co2"],
             color_continuous_scale=gradients[scale],
             labels={primary: METRICS[primary]}, projection=projection,
         )
+        world.update_traces(hovertemplate=tooltip_rows("%{hovertext}", [
+            ("Selected indicator", "%{customdata[3]}"),
+            ("Rank in view", "%{customdata[4]}"),
+            ("Region", "%{customdata[0]}"),
+            ("Income group", "%{customdata[1]}"),
+            ("CO₂ per capita", "%{customdata[5]}"),
+            ("Reporting year", "%{customdata[2]}"),
+        ]))
         world.update_geos(
             showframe=False, showcoastlines=True, coastlinecolor="#364b62",
             showcountries=True, countrycolor="#15273b", showland=True,
@@ -334,9 +342,18 @@ with overview:
             world = px.scatter_geo(
                 circles, locations="iso3", size=primary, color=primary,
                 hover_name="country", size_max=38, projection=projection,
+                custom_data=["region", "income", "year", "hover_value", "hover_rank", "hover_co2"],
                 color_continuous_scale=gradients[scale],
                 labels={primary: METRICS[primary]},
             )
+            world.update_traces(hovertemplate=tooltip_rows("%{hovertext}", [
+                ("Selected indicator", "%{customdata[3]}"),
+                ("Rank in view", "%{customdata[4]}"),
+                ("Region", "%{customdata[0]}"),
+                ("Income group", "%{customdata[1]}"),
+                ("CO₂ per capita", "%{customdata[5]}"),
+                ("Reporting year", "%{customdata[2]}"),
+            ]))
             world.update_geos(
                 showframe=False, showcoastlines=True, coastlinecolor="#364b62",
                 showcountries=True, countrycolor="#1d3044", showland=True,
