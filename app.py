@@ -24,15 +24,15 @@ INK = "#08111f"
 PANEL = "#101e30"
 GRID = "rgba(155,183,214,.12)"
 TEXT = "#e7eef9"
-MUTED = "#91a6bd"
+MUTED = "#bacde0"
 MINT = "#3de2c1"
-PALETTE = ["#3de2c1", "#84a6ff", "#ffce80", "#c49cff", "#f88f9d", "#75c9ff"]
+PALETTE = ["#3de2c1", "#86adff", "#facd8d", "#bca6ff", "#9ae5ff", "#7cdecf"]
 METRICS = {**INDICATORS, CO2: "CO₂ emissions per capita"}
 SOURCES = {**{key: "World Bank" for key in INDICATORS}, CO2: "Our World in Data"}
 
 st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
-:root{--bg:#08111f;--panel:#111e31;--line:#26384f;--mint:#3de2c1;--text:#e7eef9;--muted:#91a6bd}
+:root{--bg:#08111f;--panel:#111e31;--line:#334960;--mint:#3de2c1;--text:#edf6ff;--muted:#baccdf;--control:#12253a}
 html,body,[class*="css"],.stApp{font-family:'DM Sans',sans-serif}
 .stApp{background:radial-gradient(ellipse 900px 550px at 62% -10%,#163b45 0,transparent 72%),radial-gradient(ellipse 680px 600px at 0 30%,#152340 0,transparent 65%),var(--bg);color:var(--text)}
 .block-container{padding-top:1.35rem;padding-bottom:3rem;max-width:1560px}
@@ -46,8 +46,8 @@ h1,h2,h3,h4{font-family:'Manrope',sans-serif!important;letter-spacing:-.04em!imp
 h2{font-size:1.5rem!important;margin-bottom:.5rem!important}
 h3{font-size:1.1rem!important}
 .stTabs [data-baseweb="tab-list"]{gap:8px;background:#111f32;border:1px solid #263c50;border-radius:14px;padding:6px;margin-top:14px}
-.stTabs [data-baseweb="tab"]{color:#9eb2c9;border-radius:10px;padding:11px 17px;font-weight:700}
-.stTabs [aria-selected="true"]{background:#1d3f4b!important;color:#6bf2d3!important}
+.stTabs [data-baseweb="tab"]{color:#c7d9e9!important;border-radius:10px;padding:11px 17px;font-weight:700;transition:background .2s,color .2s}
+.stTabs [aria-selected="true"]{background:#1d3f4b!important;color:#89f6e2!important;box-shadow:inset 0 0 0 1px #347b75}
 .stTabs [data-baseweb="tab-highlight"],.stTabs [data-baseweb="tab-border"]{display:none}
 [data-testid="stMetric"]{border:1px solid #263c50;background:#122238;border-radius:15px;padding:17px}
 [data-testid="stMetricValue"]{color:#edf8ff}
@@ -79,9 +79,52 @@ hr{border-color:#203349}
 .callout{background:#12263a;border:1px solid #315269;border-radius:14px;padding:15px 17px;color:#b2c8da;font-size:12px;line-height:1.7;margin-top:14px}
 .sidebar-brand{font-family:'Manrope',sans-serif;font-weight:800;color:#e9f4ff;font-size:17px;letter-spacing:-.03em}
 .sidebar-sub{font-size:10px;font-weight:800;color:#4fe3cb;letter-spacing:.18em;margin:5px 0 23px}
-.sidebar-foot{font-size:11px;color:#819cb5;line-height:1.7;margin-top:16px}
+.sidebar-foot{font-size:11px;color:#b1c7db;line-height:1.7;margin-top:16px}
 @media(max-width:900px){.hero{padding:24px}.hero-side{display:none}.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.kpi{padding:14px;min-height:112px}.hero h1{font-size:2rem}}
+
+/* Studio 03: explicitly style native controls; Streamlit themes alone cannot override every BaseWeb default. */
+.stApp [data-testid="stWidgetLabel"] p,.stApp [data-testid="stWidgetLabel"] label,
+.stApp [data-testid="stSelectbox"] label,.stApp [data-testid="stMultiSelect"] label,
+.stApp [data-testid="stRadio"] label,.stApp [data-testid="stSlider"] label,
+.stApp [data-testid="stCheckbox"] label{color:#d5e5f4!important;font-size:13px!important;font-weight:600}
+.stApp [data-testid="stCaptionContainer"],.stApp small,.stApp .stCaption{color:#b7cadc!important}
+.stApp .stTabs [data-baseweb="tab"] :is(p,span){color:inherit!important;opacity:1!important}
+.stApp .stTabs [data-baseweb="tab"]:hover{color:#f1fcff!important;background:#1d3548!important}
+.stApp .stTabs [data-baseweb="tab"][aria-selected="true"] :is(p,span){color:#8ffbe4!important}
+.stApp [data-baseweb="select"]>div,.stApp [data-baseweb="input"]>div,
+.stApp [data-testid="stSelectbox"]>div>div,.stApp [data-testid="stMultiSelect"]>div>div{
+ background:#142940!important;border:1px solid #355773!important;color:#eaf5ff!important;border-radius:11px!important;
+ box-shadow:0 2px 12px rgba(0,0,0,.09)!important}
+.stApp [data-baseweb="select"]>div:hover,.stApp [data-baseweb="input"]>div:hover{border-color:#3ca69e!important}
+.stApp [data-baseweb="select"] input,.stApp [data-baseweb="input"] input,
+.stApp [data-baseweb="select"] [data-testid="stMarkdownContainer"],
+.stApp [data-baseweb="select"] [data-baseweb="select"]{color:#eaf6ff!important;caret-color:#55edcf!important}
+.stApp [data-baseweb="select"] :is(span,svg){color:#eaf6ff}
+.stApp [data-testid="stMultiSelect"] [data-baseweb="tag"],
+.stApp [data-baseweb="tag"]{
+ background:#16474c!important;border:1px solid #2d8b87!important;border-radius:7px!important;
+ color:#c7fff1!important;box-shadow:none!important}
+.stApp [data-baseweb="tag"] :is(span,svg){color:#ddfff6!important;fill:currentColor!important}
+.stApp [data-baseweb="tag"] button:hover{background:#216563!important}
+[data-baseweb="popover"] [role="listbox"],[data-baseweb="popover"] [role="option"],
+[data-baseweb="popover"] ul{background:#15263b!important;color:#e8f5ff!important}
+[data-baseweb="popover"] [role="option"]:hover{background:#214759!important}
+.stApp [data-baseweb="slider"] [role="slider"]{
+ background:#53e6cc!important;border:3px solid #0a2838!important;box-shadow:0 0 0 3px rgba(83,230,204,.25)!important}
+.stApp [data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked){color:#75f3dc!important}
+.stApp [data-testid="stRadio"] input{accent-color:#3de2c1!important}
+.stApp [data-testid="stCheckbox"] input{accent-color:#3de2c1!important}
+.stApp [data-testid="stAlert"]{border-radius:13px}
+.stApp [data-testid="stDataFrame"],.stApp [data-testid="stDataEditor"]{background:#102338!important}
+.stApp [data-testid="stPlotlyChart"]{border-color:#31475d!important;box-shadow:0 12px 38px rgba(0,0,0,.09)}
+.stApp :is(button,input,select,textarea):focus-visible{outline:2px solid #5bebd0!important;outline-offset:2px}
+.stApp a{color:#78e5de}
+.stApp .small-pill{color:#b0f8e9!important}
+.stApp .kpi-label{color:#b1cadf}
+.stApp .kpi-note{color:#b2c8dc}
+.stApp .hero p{color:#c0d0e3}
+@media(max-width:650px){.stTabs [data-baseweb="tab"]{padding:9px!important;font-size:11px}.stApp [data-testid="stPlotlyChart"]{padding:4px!important}}
 </style>""", unsafe_allow_html=True)
 
 
