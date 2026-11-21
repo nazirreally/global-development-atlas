@@ -7,10 +7,10 @@
 ![Streamlit](https://img.shields.io/badge/Streamlit-dashboard-FF4B4B?logo=streamlit&logoColor=white)
 ![R](https://img.shields.io/badge/R-ggplot2_companion-276DC3?logo=r&logoColor=white)
 ![Data](https://img.shields.io/badge/Data-real_public_sources-14B8A6)
-![Tests](https://img.shields.io/badge/Tests-5_local_passed-3B82F6)
+![Tests](https://img.shields.io/badge/Tests-5_prior_local_passed-3B82F6)
 ![CI](https://img.shields.io/badge/GitHub_Actions-configured_not_verified-64748B)
 
-> **Verification note:** Five Python tests passed in the preparation environment. GitHub Actions, live external API retrieval, R execution and Streamlit rendering have **not yet been verified**. No benchmark, dataset size, deployment URL or screenshot is invented.
+> **Verification note:** Five Python tests passed in the original preparation environment; two new regression tests have been added but the complete suite has not yet been rerun in a network-capable build environment. GitHub Actions, live external API retrieval, R execution and Streamlit rendering have **not yet been verified**. No benchmark, dataset size, deployment URL or screenshot is invented.
 
 ## Why this project?
 
@@ -55,7 +55,7 @@ flowchart LR
 |---|---|---|
 | World Bank | [Indicators API](https://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL?format=json) | Population, total GDP, GDP per capita, life expectancy, renewable electricity |
 | World Bank | [Country metadata](https://api.worldbank.org/v2/country?format=json) | Country names, ISO3 identifiers, region and income grouping |
-| Our World in Data | [CO₂ emissions per capita CSV](https://ourworldindata.org/grapher/co2-per-capita.csv) | Historical emissions per person |
+| Our World in Data | [CO₂ emissions per capita CSV](https://ourworldindata.org/grapher/co-emissions-per-capita.csv) | Historical emissions per person |
 
 **World Bank indicator codes:** `NY.GDP.MKTP.CD`, `SP.POP.TOTL`, `NY.GDP.PCAP.CD`, `SP.DYN.LE00.IN`, `EG.ELC.RNEW.ZS`.
 
@@ -130,7 +130,7 @@ python -m pytest -q
 python -m compileall -q app.py atlas
 ```
 
-**Verification performed:** five Python unit tests passed locally, covering temporal join behavior, duplicate-key rejection, unsupported indicator rejection, malformed World Bank payloads, and OWID CSV contract changes.
+**Verification performed:** five original Python unit tests passed locally; two regression tests for the OWID endpoint and schema were added (full suite rerun pending), covering temporal join behavior, duplicate-key rejection, unsupported indicator rejection, malformed World Bank payloads, and OWID CSV contract changes.
 
 The GitHub Actions workflow is configured to run pytest and source compilation on push and pull requests. Its result must be checked in the [Actions tab](https://github.com/nazirreally/global-development-atlas/actions); **CI success is not assumed**.
 
@@ -175,3 +175,7 @@ global-development-atlas/
 ---
 
 **Integrity statement:** Every displayed analytical observation originates from a real published dataset. No simulated data, fabricated records, artificial benchmark numbers, or unverified visuals are presented as factual results.
+
+### 2026-11-22: OWID source URL correction
+
+A deployed user session exposed an HTTP 404 at the previous, incorrect CO₂ per-capita CSV slug. The connector now uses the [published OWID Grapher endpoint](https://ourworldindata.org/grapher/co-emissions-per-capita.csv), and regression tests guard against accidentally restoring that broken slug. Live deployment validation is still required; tests do not imply live API availability.
