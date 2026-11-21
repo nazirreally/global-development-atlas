@@ -371,7 +371,14 @@ with overview:
         bars = px.bar(ranked, x=primary, y="country", color=primary,
                       orientation="h", color_continuous_scale=gradients[scale],
                       labels={primary: METRICS[primary], "country": ""},
+                      custom_data=["hover_value", "region", "income", "hover_rank"],
                       hover_name="country")
+        bars.update_traces(hovertemplate=tooltip_rows("%{y}", [
+            ("Observed value", "%{customdata[0]}"),
+            ("Rank", "%{customdata[3]}"),
+            ("Region", "%{customdata[1]}"),
+            ("Income group", "%{customdata[2]}"),
+        ]))
         bars.update_layout(coloraxis_showscale=False)
         chart(style_chart(bars, 390, legend=False))
     with right:
@@ -408,10 +415,19 @@ with compare:
             ylabel = METRICS[primary]
             ycolumn = primary
         if not trends.empty:
+            trends["hover_value"] = trends[ycolumn].map(
+                lambda v: f"{v:,.1f} indexed" if normalize else format_value(v, primary)
+            )
             timeline = px.line(trends, x="year", y=ycolumn, color="country", markers=True,
                                color_discrete_sequence=PALETTE,
-                               labels={"year": "Year", ycolumn: ylabel, "country": "Country"})
-            timeline.update_traces(line=dict(width=3), marker=dict(size=5))
+                               labels={"year": "Year", ycolumn: ylabel, "country": "Country"},
+                               custom_data=["country", "year", "hover_value"])
+            timeline.update_traces(
+                line=dict(width=3), marker=dict(size=5),
+                hovertemplate=tooltip_rows("%{customdata[0]}", [
+                    ("Year", "%{customdata[1]}"), ("Observed value", "%{customdata[2]}"),
+                ]),
+            )
             chart(style_chart(timeline, 480))
         heading("05 / MOMENTUM", "Actual year-over-year change")
         movements = annual_change(scoped.loc[scoped.country.isin(countries_for_trends)], primary, year)
@@ -459,8 +475,22 @@ with relationships:
                     size_max=55)
         if bubble_population:
             args["size"] = "SP.POP.TOTL"
+        scatter_data["hover_x"] = scatter_data[x_metric].map(
+            lambda v: format_value(v, x_metric))
+        scatter_data["hover_y"] = scatter_data[y_metric].map(
+            lambda v: format_value(v, y_metric))
+        args["custom_data"] = ["country", "region", "income", "hover_x", "hover_y", "year"]
         graph = px.scatter(**args)
-        graph.update_traces(marker=dict(opacity=.84, line=dict(width=.7, color="#08111f")))
+        graph.update_traces(
+            marker=dict(opacity=.84, line=dict(width=.7, color="#08111f")),
+            hovertemplate=tooltip_rows("%{customdata[0]}", [
+                (METRICS[x_metric], "%{customdata[3]}"),
+                (METRICS[y_metric], "%{customdata[4]}"),
+                ("Region", "%{customdata[1]}"),
+                ("Income group", "%{customdata[2]}"),
+                ("Year", "%{customdata[5]}"),
+            ]),
+        )
         chart(style_chart(graph, 520))
         st.markdown('<div class="callout"><b>Interpretation notice:</b> Pearson correlation is a descriptive '
                     'association across the currently observed countries. Neither a positive nor negative '
